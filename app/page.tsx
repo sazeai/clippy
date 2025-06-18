@@ -13,7 +13,7 @@ import { LinkCard } from "@/components/link-card"
 import { InstallPrompt } from "@/components/install-prompt"
 import { db, type SavedLink, CATEGORIES } from "@/lib/db"
 
-const BOOKMARKLET = `javascript:(function(){window.open('http://localhost:3000/share?title='+encodeURIComponent(document.title)+'&url='+encodeURIComponent(window.location.href),'_blank');})();`
+const BOOKMARKLET = `javascript:(function(){window.open('https://clippy-xi-six.vercel.app/share?title='+encodeURIComponent(document.title)+'&url='+encodeURIComponent(window.location.href),'_blank');})();`
 
 export default function ClippyPage() {
   const [links, setLinks] = useState<SavedLink[]>([])
