@@ -197,7 +197,7 @@ export default function ClippyPage() {
         </div>
       </header>
 
-      {/* Add Form - Inline below header */}
+      {/* Add Form - Inline below */}
       <AnimatePresence>
         {showAddForm && (
           <motion.div
