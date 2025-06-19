@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, Plus, Globe, X, Link as LinkIcon } from "lucide-react"
+import { Search, Plus, Globe, Link as LinkIcon, Settings as SettingsIcon, X as XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -23,6 +23,7 @@ export default function ClippyPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showBookmarklet, setShowBookmarklet] = useState(false)
+  const [showRestore, setShowRestore] = useState(false)
 
   // Add form state
   const [url, setUrl] = useState("")
@@ -30,15 +31,35 @@ export default function ClippyPage() {
   const [selectedCategory, setSelectedCategory] = useState("") // Single source of truth
   const [isAddingLink, setIsAddingLink] = useState(false)
 
+  const urlInputRef = useRef<HTMLInputElement>(null)
+  const [urlTouched, setUrlTouched] = useState(false)
+  const [urlInvalid, setUrlInvalid] = useState(false)
+  const [showTags, setShowTags] = useState(false)
+
   useEffect(() => {
     loadLinks()
     // Only show on desktop and if not already added
     if (typeof window !== "undefined") {
       const isDesktop = window.matchMedia("(min-width: 768px)").matches
-      const added = localStorage.getItem("bookmarkletAdded") === "true"
-      setShowBookmarklet(isDesktop && !added)
+      const dismissed = localStorage.getItem("bookmarkletDismissed") === "true"
+      setShowBookmarklet(isDesktop && !dismissed)
+      setShowRestore(isDesktop && dismissed)
     }
   }, [])
+
+  // When opening the form, prefill URL with 'https://'
+  useEffect(() => {
+    if (showAddForm && url === "") {
+      setUrl("https://")
+      // Optionally, focus the input
+      setTimeout(() => {
+        urlInputRef.current?.focus()
+        // Move cursor to end
+        const val = urlInputRef.current?.value
+        if (val) urlInputRef.current.setSelectionRange(val.length, val.length)
+      }, 50)
+    }
+  }, [showAddForm])
 
   const loadLinks = async () => {
     try {
@@ -120,9 +141,16 @@ export default function ClippyPage() {
     }
   }
 
-  const handleBookmarkletDrag = () => {
+  const handleBookmarkletDismiss = () => {
     setShowBookmarklet(false)
-    localStorage.setItem("bookmarkletAdded", "true")
+    setShowRestore(true)
+    localStorage.setItem("bookmarkletDismissed", "true")
+  }
+
+  const handleRestore = () => {
+    setShowBookmarklet(true)
+    setShowRestore(false)
+    localStorage.removeItem("bookmarkletDismissed")
   }
 
   const filteredLinks = categoryLinks.filter(
@@ -144,6 +172,16 @@ export default function ClippyPage() {
     return rows
   }
 
+  // Validate URL (simple check)
+  const isValidUrl = (value: string) => {
+    try {
+      new URL(value)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -153,7 +191,7 @@ export default function ClippyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
       <InstallPrompt />
 
       {/* Header */}
@@ -164,7 +202,7 @@ export default function ClippyPage() {
             <h1 className="text-lg font-medium text-gray-900">Clippy</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Bookmarklet Button (desktop only, icon only) */}
+            {/* Bookmarklet Button (desktop only, icon+text) */}
             {showBookmarklet && (
               <div className="md:block hidden relative group">
                 <a
@@ -174,13 +212,22 @@ export default function ClippyPage() {
                   title="Drag me to your bookmarks bar!"
                   tabIndex={0}
                   onClick={e => e.preventDefault()}
-                  onDragStart={handleBookmarkletDrag}
                   aria-label="Save to Clippy bookmarklet"
                 >
                   <LinkIcon className="w-4 h-4 mr-1" />
                   Save to Clippy
                 </a>
-                <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">
+                <button
+                  onClick={handleBookmarkletDismiss}
+                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-80 group-focus-within:opacity-80 transition-opacity bg-transparent text-gray-400 hover:text-gray-600 rounded-full w-6 h-6 flex items-center justify-center border-none p-0"
+                  title="Dismiss"
+                  aria-label="Dismiss bookmarklet button"
+                  tabIndex={0}
+                  style={{ boxShadow: 'none', border: 'none' }}
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+                <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 w-56 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">
                   Drag to your bookmarks bar to save links from any site.
                 </span>
               </div>
@@ -190,79 +237,122 @@ export default function ClippyPage() {
               size="sm"
               className="bg-gray-900 text-sm hover:bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm"
             >
-              {showAddForm ? <X className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+              {showAddForm ? <XIcon className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
               {showAddForm ? "Cancel" : "Add"}
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Add Form - Inline below */}
+      {/* Restore Icon (bottom-right, low opacity, only if dismissed) */}
+      {showRestore && (
+        <button
+          onClick={handleRestore}
+          className="fixed bottom-4 right-4 z-50 opacity-30 hover:opacity-80 transition-opacity bg-white rounded-full p-2 shadow border border-gray-200 md:block hidden"
+          title="Restore bookmarklet button"
+          aria-label="Restore bookmarklet button"
+        >
+          <SettingsIcon className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Add Form - Minimal Notion Style */}
       <AnimatePresence>
         {showAddForm && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="bg-white border-b border-gray-100 overflow-hidden"
           >
-            <div className="max-w-4xl mx-auto px-4 py-4">
-              <form onSubmit={handleAddLink} className="space-y-3">
-                <div className="flex gap-3">
-                  <div className="flex-1 relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="url"
-                      placeholder="https://example.com"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className="pl-10 bg-white border-gray-200 rounded-lg focus:border-gray-900 focus:ring-0"
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <Input
-                    type="text"
-                    placeholder="Optional title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="flex-1 bg-white border-gray-200 rounded-lg focus:border-gray-900 focus:ring-0"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 whitespace-nowrap">Save to:</span>
-                  <div className="flex gap-2 flex-wrap">
-                    {CATEGORIES.map((category) => (
-                      <motion.button
-                        key={category.id}
-                        type="button"
-                        onClick={() => handleFormCategorySelect(category.id)}
-                        className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                          selectedCategory === category.id
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                        }`}
-                        animate={
-                          selectedCategory === category.id && activeCategory === category.id
-                            ? { scale: [1, 1.05, 1] }
-                            : {}
-                        }
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                      >
-                        {category.name}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={!url.trim() || !selectedCategory || isAddingLink}
-                    className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-4 py-1 text-sm ml-auto"
-                  >
-                    {isAddingLink ? "Saving..." : "Save"}
-                  </Button>
-                </div>
+            <div className="max-w-md mx-auto px-4 py-6">
+              <form
+                onSubmit={handleAddLink}
+                className="flex flex-col gap-2"
+                autoComplete="off"
+              >
+                {/* URL Input */}
+                <motion.input
+                  ref={urlInputRef}
+                  type="url"
+                  placeholder="Paste a link to save..."
+                  value={url}
+                  onChange={e => {
+                    setUrl(e.target.value)
+                    setUrlTouched(true)
+                    setUrlInvalid(false)
+                    setShowTags(isValidUrl(e.target.value))
+                  }}
+                  onBlur={() => setUrlTouched(true)}
+                  onFocus={e => {
+                    if (e.target.value === "") {
+                      setUrl("https://")
+                      setTimeout(() => {
+                        urlInputRef.current?.setSelectionRange(8, 8)
+                      }, 10)
+                    }
+                  }}
+                  autoFocus
+                  className={`w-full bg-transparent border-none border-b border-gray-300 focus:border-b-2 focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none px-0 py-3 text-base placeholder-gray-500 ${urlInvalid ? "border-b-2 border-red-500 animate-shake" : ""}`}
+                  style={{ fontSize: 16, fontWeight: 500 }}
+                  onInvalid={e => {
+                    e.preventDefault()
+                    setUrlInvalid(true)
+                  }}
+                />
+                {/* Optional Title Input */}
+                <input
+                  type="text"
+                  placeholder="Optional title"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className="w-full bg-transparent border-none border-b border-gray-200 focus:border-b-2 focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none px-0 py-3 text-base placeholder-gray-400"
+                  style={{ fontSize: 15 }}
+                />
+                {/* Tags - Only show after valid URL */}
+                <AnimatePresence>
+                  {showTags && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex flex-wrap gap-2 mt-2"
+                    >
+                      {CATEGORIES.map((category) => (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => setSelectedCategory(category.id)}
+                          className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                            selectedCategory === category.id
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {/* Save Button - prominent, full width */}
+                <motion.button
+                  type="submit"
+                  disabled={!isValidUrl(url) || !selectedCategory || isAddingLink}
+                  className="w-full mt-4 bg-black text-white rounded-lg py-3 font-semibold text-base shadow-sm hover:opacity-90 transition disabled:opacity-50"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={e => {
+                    if (!isValidUrl(url)) {
+                      setUrlInvalid(true)
+                      setTimeout(() => setUrlInvalid(false), 500)
+                      e.preventDefault()
+                    }
+                  }}
+                >
+                  Save to Clippy
+                </motion.button>
               </form>
             </div>
           </motion.div>
