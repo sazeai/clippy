@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
+import { motion, useMotionValue, useTransform } from "framer-motion"
 import { Trash2, Clock, Edit, Copy, ArrowUpRight } from "lucide-react"
 import { toast } from "sonner"
 import type { SavedLink } from "@/lib/db"
@@ -16,6 +16,11 @@ interface LinkCardProps {
 export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const isMobile = useIsMobile()
+
+  // For mobile swipe
+  const x = useMotionValue(0)
+  const controlsOpacity = useTransform(x, [-120, -60], [1, 0])
+  const controlsPointerEvents = useTransform(x, (v) => (v < -60 ? "auto" : "none"))
 
   const formatTimeAgo = (timestamp: number) => {
     const now = Date.now()
@@ -60,21 +65,8 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
 
   const showActions = isHovered && !isMobile
 
-  return (
-    <motion.div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={handleOpenLink}
-      className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-4 cursor-pointer shadow-sm w-full"
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
-    >
-      {/* Content */}
-      <motion.div
-        animate={{ opacity: showActions ? 0 : 1 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="flex items-start gap-3"
-      >
+  const cardContent = (
+      <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
             <img
               src={`https://www.google.com/s2/favicons?domain=${new URL(link.url).hostname}&sz=32`}
@@ -97,9 +89,70 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
             <span>{formatTimeAgo(link.createdAt)}</span>
           </div>
         </div>
+      </div>
+  )
+
+  if (isMobile) {
+    return (
+      <div className="relative w-full overflow-hidden rounded-2xl">
+        <motion.div
+          className="absolute inset-0 bg-red-500 rounded-2xl flex items-center justify-end"
+          style={{ opacity: controlsOpacity, pointerEvents: controlsPointerEvents }}
+          aria-hidden="true"
+        >
+          <button onClick={handleEdit} className="h-full px-6 text-white flex items-center gap-2">
+            <Edit className="w-4 h-4" />
+          </button>
+          <div className="h-3/5 w-[1px] bg-red-400/50" />
+          <button onClick={handleDelete} className="h-full px-6 text-white flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </motion.div>
+
+        <motion.div
+          className="relative bg-white border border-gray-200 rounded-2xl p-4 shadow-sm w-full cursor-grab active:cursor-grabbing"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={{ left: 0.5, right: 0 }}
+          style={{ x }}
+          onTap={() => {
+             if (x.get() === 0) {
+                 window.open(link.url, "_blank", "noopener,noreferrer")
+             } else {
+                 motion.animate(x, 0, { type: "spring", stiffness: 300, damping: 30 })
+             }
+          }}
+          onDragEnd={(e, { offset, velocity }) => {
+            if (offset.x < -80 || velocity.x < -500) {
+                motion.animate(x, -150, { type: "spring", stiffness: 400, damping: 40 })
+            } else {
+              motion.animate(x, 0, { type: "spring", stiffness: 300, damping: 30 })
+            }
+          }}
+        >
+          {cardContent}
+        </motion.div>
+      </div>
+    )
+  }
+
+  return (
+    <motion.div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleOpenLink}
+      className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-4 cursor-pointer shadow-sm w-full"
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+    >
+      <motion.div
+        animate={{ opacity: showActions ? 0 : 1 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="flex items-start gap-3"
+      >
+        {cardContent}
       </motion.div>
 
-      {/* Actions Overlay */}
       <motion.div
         className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center gap-3"
         initial={{ opacity: 0 }}
@@ -120,12 +173,6 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
           <Trash2 className="w-4 h-4" />
         </ActionButton>
       </motion.div>
-      {isMobile && (
-         <div className="absolute top-2 right-2 flex gap-1">
-            <button onClick={handleEdit} className="p-2 rounded-full bg-gray-100/80 text-gray-600"> <Edit className="w-4 h-4" /></button>
-            <button onClick={handleDelete} className="p-2 rounded-full bg-gray-100/80 text-red-500"> <Trash2 className="w-4 h-4" /></button>
-         </div>
-      )}
     </motion.div>
   )
 }
