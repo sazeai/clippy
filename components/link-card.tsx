@@ -5,7 +5,7 @@ import { useState, useRef } from "react"
 import { Trash2, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { motion } from "framer-motion"
+import { motion, PanInfo } from "framer-motion"
 import type { SavedLink } from "@/lib/db"
 
 interface LinkCardProps {
@@ -15,10 +15,7 @@ interface LinkCardProps {
 
 export function LinkCard({ link, onDelete }: LinkCardProps) {
   const [translateX, setTranslateX] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
   const [showDeleteButton, setShowDeleteButton] = useState(false)
-  const startXRef = useRef(0)
-  const currentXRef = useRef(0)
 
   const deleteThreshold = 80
   const maxSwipe = 120
@@ -36,35 +33,16 @@ export function LinkCard({ link, onDelete }: LinkCardProps) {
     return "now"
   }
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0]
-    startXRef.current = touch.clientX
-    currentXRef.current = touch.clientX
-    setIsDragging(true)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return
-
-    const touch = e.touches[0]
-    currentXRef.current = touch.clientX
-    const deltaX = startXRef.current - currentXRef.current
-
-    if (deltaX > 0) {
-      const newTranslateX = Math.min(deltaX, maxSwipe)
-      setTranslateX(newTranslateX)
-      setShowDeleteButton(newTranslateX >= deleteThreshold)
-    } else if (deltaX < 0 && translateX > 0) {
-      const newTranslateX = Math.max(0, translateX + deltaX)
-      setTranslateX(newTranslateX)
-      setShowDeleteButton(newTranslateX >= deleteThreshold)
+  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    // Only allow left swipes
+    if (info.offset.x < 0) {
+      setTranslateX(Math.abs(info.offset.x))
+      setShowDeleteButton(Math.abs(info.offset.x) >= deleteThreshold)
     }
   }
 
-  const handleTouchEnd = () => {
-    setIsDragging(false)
-
-    if (translateX >= deleteThreshold) {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (Math.abs(info.offset.x) >= deleteThreshold) {
       setTranslateX(deleteThreshold)
       setShowDeleteButton(true)
     } else {
@@ -83,7 +61,7 @@ export function LinkCard({ link, onDelete }: LinkCardProps) {
     if (showDeleteButton) {
       setTranslateX(0)
       setShowDeleteButton(false)
-    } else if (!isDragging) {
+    } else {
       window.open(link.url, "_blank", "noopener,noreferrer")
     }
   }
@@ -114,15 +92,17 @@ export function LinkCard({ link, onDelete }: LinkCardProps) {
         )}
       </div>
 
-      {/* Main card content */}
+      {/* Main card content with drag constraints */}
       <motion.div
+        drag="x"
+        dragConstraints={{ left: -maxSwipe, right: 0 }}
+        dragElastic={0.1}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
         className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md w-full"
         style={{
           transform: `translateX(-${translateX}px)`,
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         onClick={handleCardClick}
         whileHover={{
           scale: 1.01,
