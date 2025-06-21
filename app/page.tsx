@@ -321,7 +321,7 @@ export default function ClippyPage() {
                     }
                   }}
                   autoFocus
-                  className={`w-full bg-transparent border-none border-b border-gray-300 focus:border-b-2 focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none px-0 py-3 text-base placeholder-gray-500 ${urlInvalid ? "border-b-2 border-red-500 animate-shake" : ""}`}
+                  className={`w-full bg-transparent rounded-md border border-gray-300 focus:border-b-2 p-4 focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none text-base placeholder-gray-500 ${urlInvalid ? "border-b-2 border-red-500 animate-shake" : ""}`}
                   style={{ fontSize: 16, fontWeight: 500 }}
                   onInvalid={e => {
                     e.preventDefault()
@@ -334,7 +334,7 @@ export default function ClippyPage() {
                   placeholder="Optional title"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  className="w-full bg-transparent border-none border-b border-gray-200 focus:border-b-2 focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none px-0 py-3 text-base placeholder-gray-400"
+                  className="w-full bg-transparent border border-gray-200 focus:border rounded-md focus:border-black hover:bg-gray-50 focus:bg-gray-50 transition-all duration-150 outline-none p-4 text-base placeholder-gray-400"
                   style={{ fontSize: 15 }}
                 />
                 {/* Tags - Only show after valid URL */}

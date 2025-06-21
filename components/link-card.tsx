@@ -102,29 +102,43 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
         >
           <button onClick={handleEdit} className="h-full px-6 text-white flex items-center gap-2">
             <Edit className="w-4 h-4" />
+            <span>Edit</span>
           </button>
           <div className="h-3/5 w-[1px] bg-red-400/50" />
           <button onClick={handleDelete} className="h-full px-6 text-white flex items-center gap-2">
             <Trash2 className="w-4 h-4" />
+            <span>Delete</span>
           </button>
         </motion.div>
 
         <motion.div
           className="relative bg-white border border-gray-200 rounded-2xl p-4 shadow-sm w-full cursor-grab active:cursor-grabbing"
           drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={{ left: 0.5, right: 0 }}
+          dragConstraints={{ left: -160, right: 0 }}
+          dragElastic={{ left: 0.2, right: 0 }}
           style={{ x }}
           onTap={() => {
-             if (x.get() === 0) {
-                 window.open(link.url, "_blank", "noopener,noreferrer")
-             } else {
+             if (x.get() !== 0) {
                  motion.animate(x, 0, { type: "spring", stiffness: 300, damping: 30 })
              }
           }}
+          onTapStart={(e) => {
+            if (x.get() !== 0) {
+                e.stopPropagation()
+            }
+          }}
+          onTapCancel={() => {
+              // If drag starts, this cancels the tap, which is what we want
+              // So, we handle the link opening via onDragEnd
+          }}
           onDragEnd={(e, { offset, velocity }) => {
-            if (offset.x < -80 || velocity.x < -500) {
-                motion.animate(x, -150, { type: "spring", stiffness: 400, damping: 40 })
+            if (Math.abs(offset.x) < 10) {
+              handleOpenLink(e as any)
+              return
+            }
+
+            if (offset.x < -60 || velocity.x < -400) {
+                motion.animate(x, -160, { type: "spring", stiffness: 400, damping: 40 })
             } else {
               motion.animate(x, 0, { type: "spring", stiffness: 300, damping: 30 })
             }
