@@ -67,7 +67,7 @@ export default function SharePage() {
     if (sharedUrl && !savedCategory) {
       const timeout = setTimeout(() => {
         if (!savedCategory) handleCategorySelect("inbox")
-      }, 2000)
+      }, 5000)
       return () => clearTimeout(timeout)
     }
   }, [sharedUrl, savedCategory])

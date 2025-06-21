@@ -213,19 +213,35 @@ class LinkDatabase {
 
   async deleteLink(id: string): Promise<void> {
     const db = await this.openDB()
-
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([this.storeName], "readwrite")
       const store = transaction.objectStore(this.storeName)
       const request = store.delete(id)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
 
-      request.onerror = () => {
-        console.error("Failed to delete link:", request.error)
-        reject(request.error)
-      }
-      request.onsuccess = () => {
-        console.log("Link deleted successfully")
-        resolve()
+  async updateLink(id: string, updates: Partial<Pick<SavedLink, 'title' | 'category'>>): Promise<SavedLink> {
+    const db = await this.openDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([this.storeName], "readwrite")
+      const store = transaction.objectStore(this.storeName)
+      const getRequest = store.get(id)
+
+      getRequest.onerror = () => reject(getRequest.error)
+      getRequest.onsuccess = () => {
+        const link = getRequest.result
+        if (!link) {
+          return reject(new Error(`Link with id ${id} not found`))
+        }
+
+        // Apply updates
+        Object.assign(link, updates)
+
+        const putRequest = store.put(link)
+        putRequest.onerror = () => reject(putRequest.error)
+        putRequest.onsuccess = () => resolve(link)
       }
     })
   }

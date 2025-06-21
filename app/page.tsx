@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { CategoryTag } from "@/components/category-tag"
 import { LinkCard } from "@/components/link-card"
+import { EditLinkModal } from "@/components/edit-link-modal"
 import { InstallPrompt } from "@/components/install-prompt"
 import { db, type SavedLink, CATEGORIES } from "@/lib/db"
 
@@ -24,6 +25,7 @@ export default function ClippyPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showBookmarklet, setShowBookmarklet] = useState(false)
   const [showRestore, setShowRestore] = useState(false)
+  const [editingLink, setEditingLink] = useState<SavedLink | null>(null)
 
   // Add form state
   const [url, setUrl] = useState("")
@@ -111,6 +113,21 @@ export default function ClippyPage() {
       console.error("Failed to delete link:", error)
       toast.error("Failed to delete link")
     }
+  }
+
+  const handleUpdateLink = (updatedLink: SavedLink) => {
+    // Update the main links list
+    setLinks(prev => prev.map(l => (l.id === updatedLink.id ? updatedLink : l)))
+
+    // Update the currently displayed category links
+    setCategoryLinks(prev => {
+      // If the category was changed, the link might no longer belong in the current view
+      if (activeCategory && updatedLink.category !== activeCategory) {
+        return prev.filter(l => l.id !== updatedLink.id)
+      }
+      // Otherwise, just update the item in place
+      return prev.map(l => (l.id === updatedLink.id ? updatedLink : l))
+    })
   }
 
   const handleAddLink = async (e: React.FormEvent) => {
@@ -254,6 +271,16 @@ export default function ClippyPage() {
         >
           <SettingsIcon className="w-6 h-6" />
         </button>
+      )}
+
+      {/* Edit Link Modal */}
+      {editingLink && (
+        <EditLinkModal
+          link={editingLink}
+          isOpen={!!editingLink}
+          onClose={() => setEditingLink(null)}
+          onUpdate={handleUpdateLink}
+        />
       )}
 
       {/* Add Form - Minimal Notion Style */}
@@ -471,7 +498,11 @@ export default function ClippyPage() {
                               ease: "easeOut",
                             }}
                           >
-                            <LinkCard link={link} onDelete={() => handleDeleteLink(link.id)} />
+                            <LinkCard
+                              link={link}
+                              onDelete={() => handleDeleteLink(link.id)}
+                              onEdit={() => setEditingLink(link)}
+                            />
                           </motion.div>
                         ))}
                       </div>

@@ -1,24 +1,21 @@
 "use client"
 
-import type React from "react"
-import { useState, useRef } from "react"
-import { Trash2, Clock } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { motion } from "framer-motion"
+import { Trash2, Clock, Edit, Copy, ArrowUpRight } from "lucide-react"
 import { toast } from "sonner"
-import { motion, PanInfo } from "framer-motion"
 import type { SavedLink } from "@/lib/db"
+import { useIsMobile } from "@/components/ui/use-mobile"
 
 interface LinkCardProps {
   link: SavedLink
   onDelete: () => void
+  onEdit: () => void
 }
 
-export function LinkCard({ link, onDelete }: LinkCardProps) {
-  const [translateX, setTranslateX] = useState(0)
-  const [showDeleteButton, setShowDeleteButton] = useState(false)
-
-  const deleteThreshold = 80
-  const maxSwipe = 120
+export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
+  const [isHovered, setIsHovered] = useState(false)
+  const isMobile = useIsMobile()
 
   const formatTimeAgo = (timestamp: number) => {
     const now = Date.now()
@@ -27,93 +24,58 @@ export function LinkCard({ link, onDelete }: LinkCardProps) {
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
 
-    if (days > 0) return `${days}d`
-    if (hours > 0) return `${hours}h`
-    if (minutes > 0) return `${minutes}m`
-    return "now"
-  }
-
-  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    // Only allow left swipes
-    if (info.offset.x < 0) {
-      setTranslateX(Math.abs(info.offset.x))
-      setShowDeleteButton(Math.abs(info.offset.x) >= deleteThreshold)
-    }
-  }
-
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (Math.abs(info.offset.x) >= deleteThreshold) {
-      setTranslateX(deleteThreshold)
-      setShowDeleteButton(true)
-    } else {
-      setTranslateX(0)
-      setShowDeleteButton(false)
-    }
-  }
-
-  const handleDelete = () => {
-    setTranslateX(0)
-    setShowDeleteButton(false)
-    onDelete()
-  }
-
-  const handleCardClick = () => {
-    if (showDeleteButton) {
-      setTranslateX(0)
-      setShowDeleteButton(false)
-    } else {
-      window.open(link.url, "_blank", "noopener,noreferrer")
-    }
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (minutes > 0) return `${minutes}m ago`
+    return "just now"
   }
 
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
       await navigator.clipboard.writeText(link.url)
-      toast.success("Link copied")
+      toast.success("Link copied to clipboard")
     } catch (error) {
       toast.error("Failed to copy link")
     }
   }
 
-  return (
-    <div className="relative overflow-hidden rounded-2xl w-full">
-      {/* Delete background */}
-      <div
-        className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4 rounded-2xl"
-        style={{
-          opacity: translateX > 0 ? 1 : 0,
-        }}
-      >
-        {showDeleteButton && (
-          <Button onClick={handleDelete} className="bg-white/20 hover:bg-white/30 text-white rounded-full h-8 w-8 p-0">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+  const handleOpenLink = (e: React.MouseEvent) => {
+    if (isHovered && !isMobile) {
+      return
+    }
+    e.stopPropagation()
+    window.open(link.url, "_blank", "noopener,noreferrer")
+  }
+  
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onEdit()
+  }
 
-      {/* Main card content with drag constraints */}
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onDelete()
+  }
+
+  const showActions = isHovered && !isMobile
+
+  return (
+    <motion.div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleOpenLink}
+      className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-4 cursor-pointer shadow-sm w-full"
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+    >
+      {/* Content */}
       <motion.div
-        drag="x"
-        dragConstraints={{ left: -maxSwipe, right: 0 }}
-        dragElastic={0.1}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md w-full"
-        style={{
-          transform: `translateX(-${translateX}px)`,
-        }}
-        onClick={handleCardClick}
-        whileHover={{
-          scale: 1.01,
-          y: -1,
-        }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
+        animate={{ opacity: showActions ? 0 : 1 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="flex items-start gap-3"
       >
-        <div className="flex items-center gap-3">
-          {/* Favicon - larger and more prominent */}
-          <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
             <img
               src={`https://www.google.com/s2/favicons?domain=${new URL(link.url).hostname}&sz=32`}
               alt=""
@@ -124,30 +86,78 @@ export function LinkCard({ link, onDelete }: LinkCardProps) {
             />
           </div>
 
-          {/* Content with better hierarchy */}
-          <div className="flex-1 min-w-0">
-            <motion.h3
-              className="font-medium text-gray-900 text-sm line-clamp-1 mb-1 hover:underline decoration-gray-300 underline-offset-2"
-              whileHover={{ color: "#374151" }}
-            >
-              {link.title}
-            </motion.h3>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500 truncate font-mono">{new URL(link.url).hostname}</span>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center gap-1 text-gray-400">
-                <Clock className="h-2 w-2" />
-                <span>{formatTimeAgo(link.createdAt)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Subtle action indicator */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-1 h-1 bg-gray-300 rounded-full" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1 hover:underline decoration-gray-300 underline-offset-2">
+            {link.title}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span className="truncate font-mono">{new URL(link.url).hostname}</span>
+            <span className="text-gray-300">•</span>
+            <Clock className="h-3 w-3" />
+            <span>{formatTimeAgo(link.createdAt)}</span>
           </div>
         </div>
       </motion.div>
-    </div>
+
+      {/* Actions Overlay */}
+      <motion.div
+        className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center gap-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showActions ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: "easeInOut" }}
+        style={{ pointerEvents: showActions ? "auto" : "none" }}
+      >
+        <ActionButton label="Open" onClick={(e) => { e.stopPropagation(); window.open(link.url, "_blank", "noopener,noreferrer") }}>
+          <ArrowUpRight className="w-4 h-4" />
+        </ActionButton>
+        <ActionButton label="Edit" onClick={handleEdit}>
+          <Edit className="w-4 h-4" />
+        </ActionButton>
+        <ActionButton label="Copy" onClick={handleCopyLink}>
+          <Copy className="w-4 h-4" />
+        </ActionButton>
+        <ActionButton label="Delete" onClick={handleDelete} isDelete>
+          <Trash2 className="w-4 h-4" />
+        </ActionButton>
+      </motion.div>
+      {isMobile && (
+         <div className="absolute top-2 right-2 flex gap-1">
+            <button onClick={handleEdit} className="p-2 rounded-full bg-gray-100/80 text-gray-600"> <Edit className="w-4 h-4" /></button>
+            <button onClick={handleDelete} className="p-2 rounded-full bg-gray-100/80 text-red-500"> <Trash2 className="w-4 h-4" /></button>
+         </div>
+      )}
+    </motion.div>
   )
 }
+
+const ActionButton = ({
+  children,
+  label,
+  onClick,
+  isDelete = false,
+}: {
+  children: React.ReactNode
+  label: string
+  onClick: (e: React.MouseEvent) => void
+  isDelete?: boolean
+}) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
+      isDelete
+        ? "text-red-500 hover:text-red-700"
+        : "text-gray-600 hover:text-gray-900"
+    }`}
+  >
+    <div
+      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+        isDelete
+          ? "bg-red-100/50 hover:bg-red-100"
+          : "bg-gray-200/50 hover:bg-gray-200"
+      }`}
+    >
+      {children}
+    </div>
+    <span>{label}</span>
+  </button>
+)
