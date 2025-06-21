@@ -13,10 +13,16 @@ export function InstallPrompt() {
       e.preventDefault()
       setDeferredPrompt(e)
 
-      // Show prompt after 2 seconds
-      setTimeout(() => {
-        setShowPrompt(true)
-      }, 2000)
+      const isDesktop = window.matchMedia("(min-width: 768px)").matches
+      const dismissed = localStorage.getItem("installPromptDismissed") === "true"
+
+      // Only show prompt if it's not a desktop and it has been dismissed before.
+      if (!isDesktop || !dismissed) {
+        // Show prompt after 2 seconds
+        setTimeout(() => {
+          setShowPrompt(true)
+        }, 2000)
+      }
     }
 
     window.addEventListener("beforeinstallprompt", handler)
@@ -37,7 +43,14 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    setDeferredPrompt(null)
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+    if (isDesktop) {
+      // On desktop, permanently hide for future visits.
+      localStorage.setItem("installPromptDismissed", "true")
+    } else {
+      // On mobile, just dismiss for the current session.
+      setDeferredPrompt(null)
+    }
   }
 
   if (!showPrompt || !deferredPrompt) return null
