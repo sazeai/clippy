@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Plus, Globe, Link as LinkIcon, Settings as SettingsIcon, X as XIcon } from "lucide-react"
@@ -26,7 +25,8 @@ export default function ClippyPage() {
   const [showBookmarklet, setShowBookmarklet] = useState(false)
   const [showRestore, setShowRestore] = useState(false)
   const [editingLink, setEditingLink] = useState<SavedLink | null>(null)
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   // Add form state
   const [url, setUrl] = useState("")
   const [title, setTitle] = useState("")
@@ -206,6 +206,39 @@ export default function ClippyPage() {
       </div>
     )
   }
+
+  const handleExportLinks = () => {
+    const dataStr = JSON.stringify(links, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "clippy-links-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Links exported!");
+  };
+
+  const handleImportLinks = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedLinks = JSON.parse(e.target?.result as string);
+        if (Array.isArray(importedLinks)) {
+          setLinks(importedLinks);
+          localStorage.setItem('links', JSON.stringify(importedLinks));
+          toast.success("Links imported successfully!");
+        } else {
+          toast.error("Invalid file format.");
+        }
+      } catch {
+        toast.error("Import failed. Invalid JSON.");
+      }8
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
@@ -542,6 +575,65 @@ export default function ClippyPage() {
           </a>
         </p>
       </footer>
+      <input
+        type="file"
+        accept="application/json"
+        style={{ display: "none" }}
+        ref={fileInputRef}
+        onChange={handleImportLinks}
+      />
+      <div
+        style={{
+          position: "fixed",
+          bottom: 16,
+          left: 16,
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
+        <button
+          title="Export Links"
+          onClick={handleExportLinks}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "#f3f4f6",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 18,
+          }}
+        >
+          {/* Download icon SVG */}
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M12 17V3m0 14l-5-5m5 5l5-5"/><rect x="4" y="17" width="16" height="4" rx="2" fill="#d1d5db"/></svg>
+        </button>
+        <button
+          title="Import Links"
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "#f3f4f6",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 18,
+          }}
+        >
+          {/* Upload icon SVG */}
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M12 7v14m0-14l-5 5m5-5l5 5"/><rect x="4" y="3" width="16" height="4" rx="2" fill="#d1d5db"/></svg>
+        </button>
+      </div>
     </div>
   )
 }
