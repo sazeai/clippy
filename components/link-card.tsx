@@ -45,11 +45,7 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
     }
   }
 
-  const handleOpenLink = (e: React.MouseEvent) => {
-    if (isHovered && !isMobile) {
-      return
-    }
-    e.stopPropagation()
+  const handleOpenLink = () => {
     window.open(link.url, "_blank", "noopener,noreferrer")
   }
   
@@ -114,29 +110,17 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
         <motion.div
           className="relative bg-white border border-gray-200 rounded-2xl p-4 shadow-sm w-full cursor-grab active:cursor-grabbing"
           drag="x"
+          dragDirectionLock
           dragConstraints={{ left: -160, right: 0 }}
           dragElastic={{ left: 0.2, right: 0 }}
           style={{ x }}
           onTap={() => {
-             if (x.get() !== 0) {
-                 motion.animate(x, 0, { type: "spring", stiffness: 300, damping: 30 })
-             }
-          }}
-          onTapStart={(e) => {
-            if (x.get() !== 0) {
-                e.stopPropagation()
+            // Only open link on true tap, not after swipe
+            if (Math.abs(x.get()) < 2) {
+              handleOpenLink();
             }
-          }}
-          onTapCancel={() => {
-              // If drag starts, this cancels the tap, which is what we want
-              // So, we handle the link opening via onDragEnd
           }}
           onDragEnd={(e, { offset, velocity }) => {
-            if (Math.abs(offset.x) < 10) {
-              handleOpenLink(e as any)
-              return
-            }
-
             if (offset.x < -60 || velocity.x < -400) {
                 motion.animate(x, -160, { type: "spring", stiffness: 400, damping: 40 })
             } else {
@@ -154,7 +138,11 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
     <motion.div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={handleOpenLink}
+      onClick={(e) => {
+        if (isHovered && !isMobile) return
+        e.stopPropagation()
+        handleOpenLink()
+      }}
       className="relative bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-4 cursor-pointer shadow-sm w-full"
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
@@ -174,16 +162,16 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
         transition={{ duration: 0.4, ease: "easeInOut" }}
         style={{ pointerEvents: showActions ? "auto" : "none" }}
       >
-        <ActionButton onClick={(e) => { e.stopPropagation(); window.open(link.url, "_blank", "noopener,noreferrer") }}>
+        <ActionButton label="Open" onClick={(e) => { e.stopPropagation(); handleOpenLink(); }}>
           <ArrowUpRight className="w-4 h-4" />
         </ActionButton>
-        <ActionButton onClick={handleEdit}>
+        <ActionButton label="Edit" onClick={handleEdit}>
           <Edit className="w-4 h-4" />
         </ActionButton>
-        <ActionButton onClick={handleCopyLink}>
+        <ActionButton label="Copy" onClick={handleCopyLink}>
           <Copy className="w-4 h-4" />
         </ActionButton>
-        <ActionButton onClick={handleDelete} isDelete>
+        <ActionButton label="Delete" onClick={handleDelete} isDelete>
           <Trash2 className="w-4 h-4" />
         </ActionButton>
       </motion.div>
