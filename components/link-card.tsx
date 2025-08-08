@@ -98,12 +98,12 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
         >
           <button onClick={handleEdit} className="h-full px-6 text-white flex items-center gap-2">
             <Edit className="w-4 h-4" />
-            <span>Edit</span>
+          
           </button>
           <div className="h-3/5 w-[1px] bg-red-400/50" />
           <button onClick={handleDelete} className="h-full px-6 text-white flex items-center gap-2">
             <Trash2 className="w-4 h-4" />
-            <span>Delete</span>
+          
           </button>
         </motion.div>
 
