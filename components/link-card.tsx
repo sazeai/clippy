@@ -174,16 +174,16 @@ export function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
         transition={{ duration: 0.4, ease: "easeInOut" }}
         style={{ pointerEvents: showActions ? "auto" : "none" }}
       >
-        <ActionButton label="Open" onClick={(e) => { e.stopPropagation(); window.open(link.url, "_blank", "noopener,noreferrer") }}>
+        <ActionButton onClick={(e) => { e.stopPropagation(); window.open(link.url, "_blank", "noopener,noreferrer") }}>
           <ArrowUpRight className="w-4 h-4" />
         </ActionButton>
-        <ActionButton label="Edit" onClick={handleEdit}>
+        <ActionButton onClick={handleEdit}>
           <Edit className="w-4 h-4" />
         </ActionButton>
-        <ActionButton label="Copy" onClick={handleCopyLink}>
+        <ActionButton onClick={handleCopyLink}>
           <Copy className="w-4 h-4" />
         </ActionButton>
-        <ActionButton label="Delete" onClick={handleDelete} isDelete>
+        <ActionButton onClick={handleDelete} isDelete>
           <Trash2 className="w-4 h-4" />
         </ActionButton>
       </motion.div>
